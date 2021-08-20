@@ -1,0 +1,38 @@
+name: ci_dispatch
+
+on:
+  workflow_dispatch:
+    # inputs:
+    #   reason:
+    #     description: 'Reason to pass CI'
+    #     required: true
+    #   conclusion:
+    #     description: 'CI conclusion, allowed values: success or failure'
+    #     required: true
+
+jobs:
+  create_commit_status:
+    name: create_check_status
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+         echo "${{ github.event.inputs.state }}"
+         echo "${{ github.event.inputs.ref }}"
+      - uses: actions/github-script@v4
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            github.repos.createCommitStatus({
+              state: '${{ github.event.inputs.ref }}',
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              context: '${{ github.workflow }}',
+              sha: '${{ github.event.client_payload.sha }}',
+              target_url: 'https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}'
+            })
+  
+
+
+       
+    
+

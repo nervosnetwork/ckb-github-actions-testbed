@@ -1,0 +1,96 @@
+name: ci_linters
+on:
+  pull_request:
+    types: [ opened, synchronize, reopened ]
+  push:
+
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: full
+  RUSTFLAGS: -D warnings
+  COMMIT_MESSAGE: ${{github.event.head_commit.message}}
+  REPO_ACTOR: ${{github.actor}}
+  CI_RUNS_ON: ${{secrets.CI_RUNS_ON}}
+  REPO_OWNER: ${{github.repository_owner}}
+  EVENT_NAME: ${{github.event_name}}
+jobs:
+  prologue:
+    name: prologue
+    runs-on: ubuntu-20.04
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v2
+      - name: set-output
+        id: set-matrix 
+        run: |
+          runs_on=`${{github.workspace}}/devtools/ci/set_runs_on.sh`
+          echo $runs_on
+          echo "::set-output name=matrix::{\"os\":$runs_on}"
+
+  get-runs-on:
+    name: get-runs-on
+    needs: set-runs-on
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix: ${{fromJSON(needs.set-runs-on.outputs.matrix)}} 
+    steps:
+    - name: echo test-runs-on out out
+      run: echo  ${{fromJSON(needs.set-runs-on.outputs.matrix)}}
+  # ci_liners:
+  #   name: ci_liners
+  #   runs-on: ${{ matrix.os }}
+  #   strategy:
+  #     matrix:
+  #       os: [ubuntu-20.04,macos-10.15]
+  #     fail-fast: true
+  #     max-parallel: 10
+  #   env:
+  #     ImageOS:  ${{ matrix.os }}
+  #     BUILD_BUILDID: ${{ github.event.ref }}
+  #   steps: 
+  #     - uses: actions/checkout@v2
+  #     - name: Linters
+  #       run: |
+  #         echo "liners test"
+
+  # check_runs:
+  #   if: ${{ always() }}
+  #   name: check_runs
+  #   runs-on: ubuntu-20.04
+  #   needs: ci_liners
+  #   steps: 
+  #   - uses: actions/checkout@v2
+  #   - name: install python requirements
+  #     uses: actions/setup-python@v2
+  #     with:
+  #       python-version: 3.8
+  #   - run: |
+  #       pip install requests
+  #       pip install datetime
+  #       pip install python-dotenv
+  #   - name: Do check suite 
+  #     id: check_suit
+  #     run: |
+  #       python3 ${{ github.workspace }}/devtools/ci/check_runs.py ${{ github.sha }} ${{secrets.WORKFLOW_TOKEN}} > result.log
+  #       cat result.log
+  #       CI_conclusion=`cat result.log | grep "CI_conclusion" | awk -F ':' '{print $2}'`
+  #       required_jobs_count=`cat result.log | grep "required_jobs_count" | awk -F ':' '{print $2}'`
+  #       echo "====="
+  #       echo $CI_conclusion
+  #       echo "::set-output name=CI_conclusion::${CI_conclusion}"
+  #       echo "::set-output name=required_jobs_count::${required_jobs_count}"
+  #   - name: echo CI_conclusion
+  #     if: |
+  #       (contains(github.event_name, 'pull_request') || contains('bors[bot]', github.actor)) && 
+  #       ${{ steps.check_suit.outputs.CI_conclusion == 'success' }} &&
+  #       ${{ steps.check_suit.outputs.required_jobs_count == '4' }}
+  #     uses: benc-uk/workflow-dispatch@v1
+  #     with:
+  #        workflow: ci_dispatch
+  #        token: ${{ secrets.WORKFLOW_TOKEN }}
+  #        inputs: '{ "ref": ${{ github.ref }} }'
+
+  #   env:
+  #     workspace: ${{ github.workspace }}
